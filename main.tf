@@ -74,6 +74,17 @@ resource "azurerm_network_security_group" "nsg_admin" {
   name                = "nsg-admin-nimbus-${var.binome}"
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
+  security_rule {
+    name                       = "AllowSSHFromMyIP"
+    priority                   = 100
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "22"
+    source_address_prefix      = var.my_ip
+    destination_address_prefix = "*"
+  }
 }
 
 resource "azurerm_subnet_network_security_group_association" "nsg_admin_assoc" {
@@ -205,4 +216,54 @@ resource "azurerm_subnet_nat_gateway_association" "natgw_snet_assoc" {
 resource "azurerm_subnet_network_security_group_association" "nsg_web_assoc" {
   subnet_id                 = azurerm_subnet.snet-web.id
   network_security_group_id = azurerm_network_security_group.nsg_web.id
+}
+
+resource "azurerm_public_ip" "pip_jumpbox" {
+  name                = "pip-jumpbox-nimbus-${var.binome}"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+  allocation_method   = "Static"
+  sku                 = "Standard"
+}
+
+resource "azurerm_network_interface" "nic_jumpbox" {
+  name                = "nic-jumpbox-nimbus-${var.binome}"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+
+  ip_configuration {
+    name                          = "internal"
+    subnet_id                     = azurerm_subnet.snet-admin.id
+    private_ip_address_allocation = "Dynamic"
+    public_ip_address_id          = azurerm_public_ip.pip_jumpbox.id
+  }
+}
+
+resource "azurerm_linux_virtual_machine" "vm_jumpbox" {
+  name                = "vm-jumpbox-nimbus-${var.binome}"
+  resource_group_name = azurerm_resource_group.rg.name
+  location            = azurerm_resource_group.rg.location
+  size                = var.taille_vm
+  admin_username      = "adminuser"
+
+  network_interface_ids           = [azurerm_network_interface.nic_jumpbox.id]
+  disable_password_authentication = true
+
+  admin_ssh_key {
+    username   = "adminuser"
+    public_key = file(var.ssh_pub_key)
+  }
+
+  os_disk {
+    name                 = "osdisk-jumpbox-nimbus-${var.binome}"
+    caching              = "ReadWrite"
+    storage_account_type = "Standard_LRS"
+  }
+
+  source_image_reference {
+    publisher = "Canonical"
+    offer     = "0001-com-ubuntu-server-jammy"
+    sku       = "22_04-lts"
+    version   = "latest"
+  }
 }

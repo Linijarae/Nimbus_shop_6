@@ -18,3 +18,11 @@ variable "ssh_pub_key" {
   type        = string
   description = "Chemin vers la clé SSH publique"
 }
+variable "my_ip" {
+  type        = string
+  description = "IP publique autorisée pour le SSH"
+}
+variable "admin_email" {
+  type        = string
+  description = "Email pour recevoir l'alerte CPU"
+}
