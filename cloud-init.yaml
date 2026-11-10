@@ -1,0 +1,9 @@
+#cloud-config
+
+package_update: true
+packages: 
+  - nginx
+runcmd: 
+  - echo "<h1>NimbusShop - Serveur $(hostname)</h1>" > /var/www/html/index.html
+  - echo "OK-nimbus" > /var/www/html/sante
+  - systemctl restart nginx
