@@ -4,6 +4,7 @@ resource "azurerm_resource_group" "rg" {
     tags = {
         projet = "nimbus-shop"
         owner = var.binome
+        env   = "dev"
     }
 }
 
@@ -56,6 +57,28 @@ resource "azurerm_network_security_group" "nsg_web" {
     source_address_prefix      = "AzureLoadBalancer"
     destination_address_prefix = "*"
   }
+  security_rule {
+    name                       = "DenyAll"
+    priority                   = 4096
+    direction                  = "Inbound"
+    access                     = "Deny"
+    protocol                   = "*"
+    source_port_range          = "*"
+    destination_port_range     = "*"
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
+  }
+}
+
+resource "azurerm_network_security_group" "nsg_admin" {
+  name                = "nsg-admin-nimbus-${var.binome}"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+}
+
+resource "azurerm_subnet_network_security_group_association" "nsg_admin_assoc" {
+  subnet_id                 = azurerm_subnet.snet-admin.id
+  network_security_group_id = azurerm_network_security_group.nsg_admin.id
 }
 
 resource "azurerm_network_interface" "nic_web" {
@@ -73,7 +96,7 @@ resource "azurerm_network_interface" "nic_web" {
 
 resource "azurerm_linux_virtual_machine" "vm_web" {
   count               = 2
-  name                = "vm-web-${count.index + 1}"
+  name                = "vm-web-${count.index + 1}-nimbus-${var.binome}"
   resource_group_name = azurerm_resource_group.rg.name
   location            = azurerm_resource_group.rg.location
   size                = var.taille_vm
